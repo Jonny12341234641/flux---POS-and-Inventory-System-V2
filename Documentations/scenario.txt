@@ -1,0 +1,581 @@
+Below is a full **end-to-end, real-life walkthrough** of how **Flux POS & Inventory System** would be used in a pharmacy/retail business—covering **every function/page listed in your Scope PDF**. 
+
+---
+
+## Real-life scenario: “CityCare Pharmacy” (2 branches)
+
+* **Branch A (Main)** and **Branch B (Town)**
+* Roles:
+
+  * **Owner/Admin** (sets up the system, accounting mappings, templates)
+  * **Manager** (purchases, stock control, approvals, reconciliations)
+  * **Cashier** (POS sales, customer receipts, shift close)
+  * **Accounts clerk** (journals, bank reconciliation, financial year close)
+
+---
+
+# 1) First-time setup (before opening day)
+
+## 1.1 Add & Edit masters (foundation data)
+
+### A) Category setup
+
+Owner creates product structure:
+
+* **Category No, Level, Category Name, Short Code, Comment**
+  Example:
+* Level 1: *Medicine* (MED)
+* Level 2: *Antibiotics* (AB)
+  This supports reporting like item lists, fast moving items, stock summaries, etc.
+
+### B) Supplier setup
+
+Manager adds suppliers with:
+
+* **Level, Supplier No, Address, Email, Mobile, NIC No, Remarks**
+  Example: “HealthDistributors (Pvt) Ltd” is added as a primary supplier.
+
+### C) User setup
+
+Owner creates users:
+
+* Cashiers for each branch
+* Managers
+* Accounts staff
+  This is later controlled by **User Type Authentication Mapping** (who can access what).
+
+### D) Item setup
+
+Manager adds items (core of the system). Each item is linked to category, supplier, and stock behavior.
+Example items:
+
+* “Amoxicillin 500mg”
+* “Paracetamol 500mg”
+* “Vitamin C”
+
+(Your PDF lists “Item” as a core page; this is where barcode/expiry/batch/price behaviors come into play in later transactions.)
+
+### E) Manufacturer setup
+
+Manager records:
+
+* **Manufacturer No, Title, Name, Address, Business Reg No, Mobile, Email, Remarks**
+  Useful for compliance and reporting (especially pharmacy supply chain).
+
+### F) Location setup (multi-branch / multi-store rooms)
+
+Owner defines locations like:
+
+* Branch A – Main Store
+* Branch A – Warehouse
+* Branch B – Main Store
+
+This enables:
+
+* **Stock Balance by Location**
+* **Locationwise Stock Balance**
+* **Expiration warnings by location**
+* **Stock transfer flows**
+
+### G) Customer setup
+
+For credit customers (clinics/regular buyers), store:
+
+* **Customer No, Title, Name, Address, NIC, Mobile, Email, Remarks, Credit Limit, Credit Days**
+  Example: “Green Clinic” gets Credit Limit = 200,000 and Credit Days = 30.
+
+### H) Units setup
+
+Define units (tablet, bottle, pack, box, etc.) so items and reporting are consistent.
+
+### I) Adjustment / cash reasons setup
+
+Create standardized reasons so audit trails stay clean:
+
+* **Invoice Adjustment Reason**
+* **GRN Adjustment Reason**
+* **Cash In Reason**
+* **Cash Out Reason**
+  Examples:
+* Invoice Adjustment Reason: “Price correction”, “Discount approval”
+* GRN Adjustment Reason: “Supplier short delivered”, “Damaged on arrival”
+* Cash In Reason: “Petty cash top-up”
+* Cash Out Reason: “Courier payment”, “Office supplies”
+
+### J) Banks & Branches (Bank Account Details)
+
+Add business bank accounts for:
+
+* cheque deposits
+* bank reconciliation
+* payment records
+
+### K) Ledger Accounts
+
+Setup ledger accounts for accounting outputs:
+
+* Sales, Returns, Inventory, COGS, Cash, Bank, Accounts Receivable, Accounts Payable, etc.
+
+---
+
+## 1.2 Tools configuration (system controls)
+
+### Printer Settings
+
+Owner sets:
+
+* receipt printer model
+* paper size
+* (important for POS speed and consistent output)
+
+### Report Templates
+
+Owner standardizes print layouts and report formats.
+
+### User Password Change / Recover
+
+* Users can change passwords
+* Admin can help recover (as per tool list)
+
+### User Type Authentication Mapping
+
+Owner maps permissions:
+
+* Cashier: Sales Invoice, Temp Invoice, Customer Receipt, Shift End Close, Find Invoice
+* Manager: GRN, Purchase Order, Stock Transfer, Stock Adjustments, Inventory Reconciliation, Reports
+* Accounts: Journal Entry, Bank Reconciliation, Trial Balance, Income Statement, Balance Sheet, Close Financial Year
+
+### Preferences
+
+Set defaults such as:
+
+* default location per branch login
+* invoice numbering preferences
+* default printers/templates
+
+### General Account Mapping
+
+Map transaction types to ledger accounts (so reports like Trial Balance/Income Statement work properly).
+
+### File Import
+
+Owner imports bulk master data:
+
+* items list
+* suppliers
+* opening stock
+  Instead of typing everything manually.
+
+### Calculator
+
+Quick calculations inside the app when needed at POS/admin work.
+
+---
+
+# 2) Purchasing cycle (Branch A receives stock)
+
+## 2.1 Purchase Order
+
+Manager creates a **Purchase Order** for HealthDistributors:
+
+* items + quantities needed
+* used for tracking and later matching with GRN
+
+## 2.2 Goods Received Note (GRN)
+
+When goods arrive, Manager opens **GRN**:
+
+* selects supplier
+* enters batches/expiry (pharmacy critical)
+* enters cost price, selling price, quantities, free issue if any
+  Now stock is officially increased at the selected **Location**.
+
+### If supplier delivery has issues…
+
+#### GRN Post Adjustment
+
+If later they notice:
+
+* wrong cost entered
+* quantity mismatch
+  they do a **GRN Post Adjustment** using predefined **GRN Adjustment Reasons**.
+
+#### GRN Cancellation
+
+If the GRN was fully wrong (wrong supplier / duplicate entry), they can do **GRN Cancellation**.
+
+#### Purchase Return Note
+
+If items are damaged/expired on arrival:
+
+* Manager creates **Purchase Return Note**
+* stock reduces accordingly
+* record stays linked to supplier
+
+---
+
+# 3) Stock operations across branches
+
+## 3.1 Stock Transfer Note (Branch A → Branch B)
+
+Branch B is running out of “Paracetamol”.
+Manager at Branch A creates **Stock Transfer Note**:
+
+* From: Branch A store
+* To: Branch B store
+* Items + quantities
+
+## 3.2 Stock Receive Note (Branch B confirms receipt)
+
+Branch B receives the shipment and confirms with **Stock Receive Note**.
+Now both branches’ stock levels are correct.
+
+## 3.3 Stock Adjustments
+
+Used when:
+
+* items damaged in-store
+* expired items removed
+* stock count errors corrected
+  Adjustments become auditable through “Stock Adjustment Details” report later.
+
+## 3.4 Inventory Reconciliation
+
+At month-end, manager does **Inventory Reconciliation**:
+
+* compares physical count vs system count
+* marks reconciled items
+* records discrepancies formally
+
+## 3.5 Barcode Printing
+
+Manager prints barcodes for:
+
+* items without barcodes
+* shelf labels
+  This supports faster scanning at Sales Invoice.
+
+---
+
+# 4) Sales cycle (POS at Branch B)
+
+## 4.1 Sales Invoice (standard sale)
+
+A customer buys:
+
+* Amoxicillin x 10
+* Paracetamol x 20
+
+Cashier:
+
+1. Opens **Sales Invoice**
+2. Scans barcode or searches item
+3. System pulls selling price / batch availability
+4. Confirms quantities
+5. Applies any allowed discount
+6. Takes payment (cash/card/credit workflow depending on settings)
+7. Prints receipt
+
+## 4.2 Temp Invoice (hold/resume)
+
+Customer forgets wallet and asks cashier to hold the bill.
+Cashier creates a **Temp Invoice**:
+
+* saved but not fully finalized
+  When customer returns, cashier reopens and completes payment.
+
+## 4.3 Credit Invoice (sell on credit)
+
+A clinic purchases items on account.
+Cashier/Manager issues **Credit Invoice**:
+
+* selects customer
+* checks **Credit Limit** and **Credit Days**
+* invoice becomes outstanding (A/R)
+
+## 4.4 Invoice Post Adjustment
+
+If later the manager approves a correction (e.g., discount mistake):
+
+* do **Invoice Post Adjustment**
+* must select **Invoice Adjustment Reason**
+* creates audit trail
+
+## 4.5 Credit Note (sales return/allowance)
+
+Customer returns an item (or price adjustment after sale):
+
+* issue **Credit Note**
+  This reduces sales and adjusts stock/financials accordingly (depending on your configured rules).
+
+## 4.6 Invoice Cancellation
+
+If invoice was wrong and must be voided completely:
+
+* perform **Invoice Cancellation**
+  (keeps the record but reverses effect correctly)
+
+---
+
+# 5) Payments (customers & suppliers)
+
+## 5.1 Customer Receipt (collect money)
+
+For credit customers (clinic):
+Accounts clerk opens **Customer Receipt**:
+
+* selects customer
+* selects outstanding invoice(s)
+* records payment method (cash/bank/cheque as configured)
+* prints receipt if required
+
+### Customer Receipt Cancellation
+
+If a receipt was recorded wrongly:
+
+* do **Customer Receipt Cancellation**
+
+### Customer Payment Adjustment
+
+If payment allocation needs correction (applied to wrong invoice):
+
+* use **Customer Payment Adjustment**
+  (keeps audit trail rather than deleting history)
+
+---
+
+## 5.2 Supplier Payment (pay suppliers)
+
+Accounts clerk opens **Supplier Payment**:
+
+* selects supplier
+* picks GRNs/outstanding balances
+* records payment method (cash/bank/cheque)
+
+### Supplier Payment Cancellation
+
+If wrong payment entry:
+
+* **Supplier Payment Cancellation**
+
+### Supplier Payment Adjustment
+
+If correction needed (wrong allocation/amount):
+
+* **Supplier Payment Adjustment**
+
+---
+
+# 6) Cheques workflow (post-dated cheques & deposits)
+
+## 6.1 Cheque Deposit
+
+When customer pays by cheque:
+
+* record cheque details
+* later mark it deposited via **Cheque Deposit**
+  (links to bank book and reporting)
+
+## 6.2 Cheque Deposit to Fixed Account
+
+If business deposits cheques into a fixed account:
+
+* use **Cheque Deposit to Fixed Account**
+
+## 6.3 Returned Cheques
+
+If a deposited cheque bounces:
+
+* record under **Returned Cheques**
+  So customer outstanding is restored appropriately.
+
+## 6.4 Returned Cheque Payments
+
+When customer settles the returned cheque:
+
+* record under **Returned Cheque Payments**
+
+---
+
+# 7) Accounting functions (for financial control)
+
+## 7.1 Journal Entry
+
+Accounts clerk posts manual journals:
+
+* corrections
+* accruals
+* expense allocations
+
+## 7.2 Cash/Bank Journal Entry
+
+Records cash/bank movements not covered elsewhere (or for adjustments).
+
+## 7.3 Bank Reconciliation
+
+Monthly bank reconciliation:
+
+* compare bank statement vs system bank ledger
+* mark cleared/un-cleared
+  This supports accurate financial statements.
+
+## 7.4 Close Financial Year
+
+At year-end:
+
+* lock the year
+* carry balances forward
+* protect old period from edits
+
+---
+
+# 8) End-of-shift / day / month cash controls
+
+## 8.1 Shift End Close
+
+Cashier closes shift:
+
+* counts cash
+* enters denominations
+* system compares expected vs actual
+* prints **Shift End Report** (later via reports)
+
+## 8.2 Day End Close
+
+Manager completes day-end:
+
+* confirms totals
+* ensures invoices/receipts are aligned
+* prints **Day End Report**
+
+## 8.3 Month End Close
+
+End of month:
+
+* finalize month figures
+* prints **Month End Report**
+* typically followed by bank reconciliation & reconciliation checks
+
+## 8.4 Add Cash In / Add Cash Out
+
+Used for petty cash events:
+
+* Cash In: owner injects cash
+* Cash Out: small expenses
+  Each uses predefined **Cash In Reason / Cash Out Reason** and appears in **Cash In/Out Report**.
+
+---
+
+# 9) Operational listings (quick management screens)
+
+## Sales menu pages
+
+* **Invoice Listing**
+* **Invoice Listing by Date**
+* **Invoice Listing by User**
+* **Invoice Adjustment Listing**
+* **Invoice Cancellation**
+* **Sales Summary**
+* **Itemwise Sales**
+* **Single Item Sales**
+* **Find Invoice**
+
+## Purchases menu pages
+
+* **GRN Listing**
+* **GRN Listing by Date**
+* **GRN Adjustment Listing**
+* **GRN Cancellation**
+* **Purchase Order**
+* **GRN Summary**
+* **Find GRN**
+
+These pages are what managers use daily to locate transactions quickly without digging through reports.
+
+---
+
+# 10) Reporting (what the owner/manager reviews)
+
+## 10.1 Stock Reports
+
+* Item List
+* Stock Quick Find
+* Supplierwise Stock Summary / Balance
+* Stock Balance by Location / Locationwise Stock Balance
+* Item History Report
+* Stock Transfer Listing / Find
+* Itemwise Stock Valuation, Stock Valuation, Valuation as at Date
+* Itemwise Stock Movement / Movement by Item
+* Customerwise Item Sold History
+* Supplierwise Item Sold History
+* Stock Adjustment Details
+* Item Expiration Date Warnings (overall + by location)
+* Stock Summary
+* Fast Moving Items / Non Moving Items
+
+## 10.2 Sales Reports
+
+* Invoice listing variants (date/user/sales rep)
+* Invoice adjustment listing
+* Sales Summary, Sales Listing
+* Full summary by date / by user
+
+## 10.3 Purchases Reports
+
+* GRN listing variants (date)
+* GRN adjustment listing
+* GRN cancellation
+* Purchase order listing
+* GRN summary
+
+## 10.4 Customer Reports
+
+* Outstanding invoices (overall, customerwise, areawise)
+* Accounts receivable aging
+* Sales and receipt summary
+* Receipt find, receipts listing, receipts summary
+* Customer statement
+* Returned cheques (customer view)
+
+## 10.5 Supplier Reports
+
+* Accounts payable aging
+* Outstanding GRNs
+* Supplier payment find, payment listing, payment summary
+* Supplier statement
+* Overdue GRN
+
+## 10.6 PD & Deposit Cheques Reports
+
+* PD cheque details
+* PD payment details
+
+## 10.7 Account Related Reports
+
+* Journal listing
+* Trial Balance
+* Income Statement
+* Balance Sheet
+* General Ledger
+* Cash In/Out report
+* Shift End report / Day End report / Month End report
+
+---
+
+# 11) Quick controls for invoices & receipts
+
+The PDF also highlights quick actions:
+
+* **Find Invoice**
+* **Cancel Invoice**
+* **Find Receipt**
+* **Cancel Receipt**
+
+These are typically used at the counter and accounts desk when customers dispute a bill or when correcting entries.
+
+---
+
+## If you want, I can convert this into:
+
+1. a **“User Journey / Process Flow” diagram** (POS → Stock → Accounts → Reports), or
+2. a **module-by-module “screens + fields + validations” document** that you can directly use as your functional spec for development.

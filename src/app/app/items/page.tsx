@@ -5,7 +5,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getCurrentLocationId } from "@/lib/locations";
 
 type Category = { id: string; name: string };
-type Unit = { id: string; name: string; symbol: string | null };
+// CHANGED: symbol -> short_code
+type Unit = { id: string; name: string; short_code: string | null };
 
 type ItemRow = {
     id: string;
@@ -16,7 +17,8 @@ type ItemRow = {
     category_id: string;
     unit_id: string;
     category?: { name: string } | null;
-    unit?: { name: string; symbol: string | null } | null;
+    // CHANGED: symbol -> short_code
+    unit?: { name: string; short_code: string | null } | null;
 };
 
 function friendlyErrorMessage(msg: string) {
@@ -85,15 +87,17 @@ export default function ItemsPage() {
             setCategories((catRes.data ?? []) as Category[]);
 
             // Units
+            // CHANGED: symbol -> short_code
             const unitRes = await supabase
                 .from("units")
-                .select("id, name, symbol")
+                .select("id, name, short_code")
                 .order("name", { ascending: true });
 
             if (unitRes.error) throw unitRes.error;
             setUnits((unitRes.data ?? []) as Unit[]);
 
             // Items (join names for display)
+            // CHANGED: unit:units(name, symbol) -> unit:units(name, short_code)
             const itemRes = await supabase
                 .from("items")
                 .select(
@@ -106,7 +110,7 @@ export default function ItemsPage() {
           category_id,
           unit_id,
           category:categories(name),
-          unit:units(name, symbol)
+          unit:units(name, short_code)
         `
                 )
                 .order("created_at", { ascending: false });
@@ -289,7 +293,8 @@ export default function ItemsPage() {
                             <option value="">Select unit</option>
                             {units.map((u) => (
                                 <option key={u.id} value={u.id}>
-                                    {u.name}{u.symbol ? ` (${u.symbol})` : ""}
+                                    {/* CHANGED: u.symbol -> u.short_code */}
+                                    {u.name}{u.short_code ? ` (${u.short_code})` : ""}
                                 </option>
                             ))}
                         </select>
@@ -381,7 +386,8 @@ export default function ItemsPage() {
                                     <td className="p-3">{it.category?.name ?? "-"}</td>
                                     <td className="p-3">
                                         {it.unit?.name ?? "-"}
-                                        {it.unit?.symbol ? ` (${it.unit.symbol})` : ""}
+                                        {/* CHANGED: it.unit.symbol -> it.unit.short_code */}
+                                        {it.unit?.short_code ? ` (${it.unit.short_code})` : ""}
                                     </td>
                                     <td className="p-3">{it.price ?? "-"}</td>
                                     <td className="p-3">{it.cost ?? "-"}</td>
