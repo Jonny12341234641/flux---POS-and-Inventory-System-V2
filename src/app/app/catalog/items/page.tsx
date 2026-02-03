@@ -410,7 +410,6 @@ export default function ItemsPage() {
                                 </tr>
                             ))}
                         </tbody>
-
                     </table>
                 </div>
             </div>
