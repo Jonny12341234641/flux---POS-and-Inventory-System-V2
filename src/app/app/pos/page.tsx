@@ -82,6 +82,7 @@ export default function PosPage() {
                 action: 'insert',
                 location_id: locationId,
                 payload: payload,
+                status: 'pending',
                 created_at: now,
                 attempt_count: 0,
                 last_error: null

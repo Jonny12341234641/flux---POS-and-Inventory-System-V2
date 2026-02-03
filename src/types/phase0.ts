@@ -112,6 +112,7 @@ export interface OutboxItem<TPayload = any> {
     payload: TPayload;
 
     // Retry + ordering support
+    status: 'pending' | 'synced' | 'failed';
     created_at: ISODateTime;
     attempt_count: number;
     last_error: string | null;
