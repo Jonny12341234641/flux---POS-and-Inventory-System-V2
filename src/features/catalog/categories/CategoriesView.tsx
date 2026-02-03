@@ -8,7 +8,7 @@ import {
     getMyLocationId,
     listCategories,
     renameCategory,
-} from "../categories.api";
+} from "./categories.api";
 
 export default function CategoriesView() {
     const [locationId, setLocationId] = useState<UUID | null>(null);
