@@ -51,6 +51,7 @@ export interface Item {
     name: string;
     barcode: string | null;
     sale_price: number; // Supabase returns numeric as string sometimes; handle carefully in code
+    cost: number;
     created_at: ISODateTime;
     updated_at: ISODateTime;
     created_by: UUID | null;

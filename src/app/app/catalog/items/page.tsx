@@ -12,7 +12,7 @@ type ItemRow = {
     id: string;
     name: string;
     barcode: string | null;
-    price: string | null; // numeric comes back as string
+    sale_price: string | null; // numeric comes back as string
     cost: string | null;  // numeric comes back as string
     category_id: string;
     unit_id: string;
@@ -54,7 +54,7 @@ export default function ItemsPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [name, setName] = useState("");
     const [barcode, setBarcode] = useState("");
-    const [price, setPrice] = useState(""); // keep as string (safe for NUMERIC)
+    const [salePrice, setSalePrice] = useState(""); // keep as string (safe for NUMERIC)
     const [cost, setCost] = useState("");
     const [categoryId, setCategoryId] = useState("");
     const [unitId, setUnitId] = useState("");
@@ -63,7 +63,7 @@ export default function ItemsPage() {
         setEditingId(null);
         setName("");
         setBarcode("");
-        setPrice("");
+        setSalePrice("");
         setCost("");
         setCategoryId("");
         setUnitId("");
@@ -105,7 +105,7 @@ export default function ItemsPage() {
           id,
           name,
           barcode,
-          price,
+          sale_price,
           cost,
           category_id,
           unit_id,
@@ -140,7 +140,7 @@ export default function ItemsPage() {
         setEditingId(row.id);
         setName(row.name ?? "");
         setBarcode(row.barcode ?? "");
-        setPrice(row.price ?? "");
+        setSalePrice(row.sale_price ?? "");
         setCost(row.cost ?? "");
         setCategoryId(row.category_id ?? "");
         setUnitId(row.unit_id ?? "");
@@ -171,7 +171,7 @@ export default function ItemsPage() {
             const payload = {
                 name: name.trim(),
                 barcode: barcode.trim() ? barcode.trim() : null,
-                price: price.trim() ? price.trim() : null,
+                sale_price: salePrice.trim() ? salePrice.trim() : null,
                 cost: cost.trim() ? cost.trim() : null,
                 category_id: categoryId,
                 unit_id: unitId,
@@ -309,8 +309,8 @@ export default function ItemsPage() {
                         <label className="text-sm font-medium">Price (optional)</label>
                         <input
                             className="mt-1 w-full border rounded px-3 py-2"
-                            value={price}
-                            onChange={(e) => setPrice(e.target.value)}
+                            value={salePrice}
+                            onChange={(e) => setSalePrice(e.target.value)}
                             placeholder="e.g., 120.00"
                             inputMode="decimal"
                         />
@@ -364,7 +364,7 @@ export default function ItemsPage() {
                                 <th className="p-3">Barcode</th>
                                 <th className="p-3">Category</th>
                                 <th className="p-3">Unit</th>
-                                <th className="p-3">Price</th>
+                                <th className="p-3">Sale Price</th>
                                 <th className="p-3">Cost</th>
                                 <th className="p-3">Actions</th>
                             </tr>
@@ -389,7 +389,7 @@ export default function ItemsPage() {
                                         {/* CHANGED: it.unit.symbol -> it.unit.short_code */}
                                         {it.unit?.short_code ? ` (${it.unit.short_code})` : ""}
                                     </td>
-                                    <td className="p-3">{it.price ?? "-"}</td>
+                                    <td className="p-3">{it.sale_price ?? "-"}</td>
                                     <td className="p-3">{it.cost ?? "-"}</td>
                                     <td className="p-3">
                                         <div className="flex gap-2">
@@ -414,6 +414,6 @@ export default function ItemsPage() {
                     </table>
                 </div>
             </div>
-        </div>
-    );
+
+            );
 }
