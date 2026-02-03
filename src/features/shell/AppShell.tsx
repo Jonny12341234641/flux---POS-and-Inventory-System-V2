@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "@/features/auth/LogoutButton";
+import { useSyncQueue } from "@/features/sync/useSyncQueue";
 
 type Props = {
     userEmail: string;
@@ -36,6 +37,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
 }
 
 export default function AppShell({ userEmail, children }: Props) {
+    useSyncQueue(); // Background worker
     return (
         <div className="min-h-screen flex">
             {/* Sidebar */}
