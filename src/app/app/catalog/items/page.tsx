@@ -414,6 +414,6 @@ export default function ItemsPage() {
                     </table>
                 </div>
             </div>
-
-            );
+        </div>
+    );
 }
