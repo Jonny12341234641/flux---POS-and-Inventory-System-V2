@@ -1,22 +1,42 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import AppShell from "@/features/shell/AppShell";
 
-export default async function AppLayout({
+export default function AppLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
+    const [userEmail, setUserEmail] = useState<string>("");
+    const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
+    const supabase = createClient();
 
-    // This protects ALL /app/* pages in one place
-    if (!data.user) {
-        redirect("/login");
+    useEffect(() => {
+        const checkAuth = async () => {
+            // We use getSession() because it works offline (reads from local storage)
+            const { data, error } = await supabase.auth.getSession();
+
+            if (error || !data.session) {
+                router.push('/login');
+            } else {
+                setUserEmail(data.session.user.email ?? "");
+            }
+            setIsLoading(false);
+        };
+
+        checkAuth();
+    }, [router, supabase]);
+
+    if (isLoading) {
+        return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
     }
 
     return (
-        <AppShell userEmail={data.user.email ?? ""}>
+        <AppShell userEmail={userEmail}>
             {children}
         </AppShell>
     );
