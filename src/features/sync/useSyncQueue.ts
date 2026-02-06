@@ -24,16 +24,8 @@ export function useSyncQueue() {
             // Actually we indexed 'sales_queue: id, status, created_at'
 
             const pendingItems = await db.sales_queue
-                .where('status').equals('PENDING') // Note: Case sensitive check 'pending' vs 'PENDING', need to match insertion
-                // Actually earlier POS inserted 'pending' (lowercase) or 'PENDING'?
-                // The Plan said 'PENDING', but let's check what I wrote in POS page. 
-                // POS page used: status: 'pending' (lowercase) in the correction step.
-                // Wait, I need to check the file content or stick to what I wrote. 
-                // The user edit showed: status: 'pending'. 
-                // So I must look for 'pending'.
-                // Actually, let's look for both to be safe or normalize? No, better stick to one.
-                // I will use 'pending' as per the latest user edit.
-                .or('status').equals('PENDING') // Just in case
+                .where('status').equals('pending')
+                .or('status').equals('PENDING')
                 .toArray();
 
             // Sort in memory since we can't easily compound index sort with 'OR' in basic dexie without generated index
