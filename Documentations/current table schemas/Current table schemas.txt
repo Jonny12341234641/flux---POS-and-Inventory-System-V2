@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
@@ -94,4 +95,102 @@ CREATE TABLE public.user_profiles (
   CONSTRAINT user_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT user_profiles_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
   CONSTRAINT user_profiles_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+=======
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.categories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT categories_pkey PRIMARY KEY (id),
+  CONSTRAINT categories_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT categories_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  category_id uuid,
+  unit_id uuid,
+  name text NOT NULL,
+  barcode text,
+  sale_price numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  cost numeric DEFAULT 0,
+  CONSTRAINT items_pkey PRIMARY KEY (id),
+  CONSTRAINT items_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT items_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id),
+  CONSTRAINT items_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.units(id),
+  CONSTRAINT items_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.locations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT locations_pkey PRIMARY KEY (id),
+  CONSTRAINT locations_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.sales_invoice_lines (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  sales_invoice_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  qty numeric NOT NULL DEFAULT 1 CHECK (qty >= 0::numeric),
+  unit_price numeric NOT NULL DEFAULT 0 CHECK (unit_price >= 0::numeric),
+  line_total numeric NOT NULL DEFAULT 0 CHECK (line_total >= 0::numeric),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT sales_invoice_lines_pkey PRIMARY KEY (id),
+  CONSTRAINT sales_invoice_lines_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT sales_invoice_lines_sales_invoice_id_fkey FOREIGN KEY (sales_invoice_id) REFERENCES public.sales_invoices(id),
+  CONSTRAINT sales_invoice_lines_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT sales_invoice_lines_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.sales_invoices (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  invoice_number text NOT NULL,
+  invoice_date timestamp with time zone NOT NULL DEFAULT now(),
+  subtotal numeric NOT NULL DEFAULT 0,
+  discount_total numeric NOT NULL DEFAULT 0,
+  grand_total numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT sales_invoices_pkey PRIMARY KEY (id),
+  CONSTRAINT sales_invoices_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT sales_invoices_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.units (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  name text NOT NULL,
+  short_code text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT units_pkey PRIMARY KEY (id),
+  CONSTRAINT units_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT units_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_profiles (
+  user_id uuid NOT NULL,
+  location_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'cashier'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT user_profiles_pkey PRIMARY KEY (user_id),
+  CONSTRAINT user_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT user_profiles_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT user_profiles_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+>>>>>>> 9b5e50e3c61f6ce0b3af768123b1fd8b1918be7d
 );
