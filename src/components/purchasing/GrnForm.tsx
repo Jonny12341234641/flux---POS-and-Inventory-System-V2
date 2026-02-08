@@ -285,6 +285,7 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                 <div className="space-y-2">
                     <Label>Supplier</Label>
                     <select
+                        data-testid="supplier-select"
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         value={watch('supplier_id')}
                         onChange={(e) => setValue('supplier_id', e.target.value)}
@@ -331,6 +332,7 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                                 <tr key={field.id}>
                                     <td className="p-2">
                                         <select
+                                            data-testid={`item-select-${index}`}
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                             value={itemId}
                                             onChange={(e) => setValue(`lines.${index}.item_id`, e.target.value)}
@@ -374,7 +376,7 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                 <Button variant="outline" onClick={() => handleSave('draft')} disabled={isSubmitting}>
                     <Save className="w-4 h-4 mr-2" /> Save Draft
                 </Button>
-                <Button onClick={() => handleSave('posted')} disabled={isSubmitting}>
+                <Button onClick={() => handleSave('posted')} disabled={isSubmitting} data-testid="post-btn">
                     <Send className="w-4 h-4 mr-2" /> Post & Sync
                 </Button>
             </div>
