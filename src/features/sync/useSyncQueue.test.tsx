@@ -24,6 +24,10 @@ vi.mock('@/lib/db', () => {
                     if (item) mockStorage.set(id, { ...item, ...changes });
                 },
                 clear: async () => mockStorage.clear(),
+                toCollection: () => ({
+                    first: async () => getItems()[0],
+                    sortBy: async (field: string) => getItems().sort((a, b) => a[field] - b[field])
+                }),
                 where: (field: string) => ({
                     equals: (val1: any) => ({
                         or: (field2: string) => ({
@@ -41,11 +45,28 @@ vi.mock('@/lib/db', () => {
 });
 
 // Mocks Supabase
-vi.mock('@/lib/supabase/client', () => ({
-    createClient: vi.fn(() => ({
-        rpc: vi.fn().mockResolvedValue({ error: null }) // Default success
-    }))
-}));
+vi.mock('@/lib/supabase/client', () => {
+    const mockBuilder = {
+        limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+        then: (onfulfilled: any) => Promise.resolve({ data: [], error: null }).then(onfulfilled)
+    };
+
+    return {
+        createClient: vi.fn(() => ({
+            rpc: vi.fn().mockResolvedValue({ error: null }),
+            from: vi.fn((table: string) => ({
+                insert: vi.fn().mockResolvedValue({ error: null }),
+                update: vi.fn().mockResolvedValue({ error: null }),
+                delete: vi.fn().mockResolvedValue({ error: null }),
+                upsert: vi.fn().mockResolvedValue({ error: null }),
+                select: vi.fn(() => mockBuilder)
+            }))
+        }))
+    };
+});
+
+
+
 
 describe('Sync Queue Logic', () => {
     beforeEach(async () => {
@@ -61,13 +82,14 @@ describe('Sync Queue Logic', () => {
     it('Sync Reliability: Should process pending items FIFO', async () => {
         // 1. Seed DB with pending items
         // Insert in reverse order to test sorting
-        await db.sales_queue.add({ id: '2', status: 'pending', created_at: '2026-01-01T11:00:00Z', payload: {}, attempt_count: 0 } as any);
-        await db.sales_queue.add({ id: '1', status: 'pending', created_at: '2026-01-01T10:00:00Z', payload: {}, attempt_count: 0 } as any);
+        await db.sales_queue.add({ id: '2', status: 'pending', created_at: '2026-01-01T11:00:00Z', payload: { id: 'temp-2' }, attempt_count: 0, entity: 'customers', action: 'insert' } as any);
+        await db.sales_queue.add({ id: '1', status: 'pending', created_at: '2026-01-01T10:00:00Z', payload: { id: 'temp-1' }, attempt_count: 0, entity: 'customers', action: 'insert' } as any);
 
-        // Default success mock is already set in top level mock, but we can ensure it:
-        vi.mocked(createClient).mockReturnValue({
-            rpc: vi.fn().mockResolvedValue({ error: null }) as any
-        } as any);
+        // Default success mock is already set in top level mock, so we don't need to override it here
+        // or if we do, we must include 'from'
+        // vi.mocked(createClient).mockReturnValue({
+        //     rpc: vi.fn().mockResolvedValue({ error: null }) as any
+        // } as any);
 
         const { result } = renderHook(() => useSyncQueue());
 
@@ -87,9 +109,23 @@ describe('Sync Queue Logic', () => {
     it('Failure Handling: Should mark item failed on network error', async () => {
         // Mock failure
         const mockRpc = vi.fn().mockResolvedValue({ error: { message: 'Network Error' } });
-        vi.mocked(createClient).mockReturnValue({ rpc: mockRpc } as any);
 
-        await db.sales_queue.add({ id: '3', status: 'pending', created_at: '2026-01-01T10:00:00Z', payload: {}, attempt_count: 0 } as any);
+        // We must include 'from' in the return value
+        vi.mocked(createClient).mockReturnValue({
+            rpc: mockRpc,
+            from: vi.fn(() => ({
+                insert: vi.fn().mockResolvedValue({ error: { message: 'Network Error' } }),
+                update: vi.fn().mockResolvedValue({ error: { message: 'Network Error' } }),
+                delete: vi.fn().mockResolvedValue({ error: { message: 'Network Error' } }),
+                upsert: vi.fn().mockResolvedValue({ error: { message: 'Network Error' } }),
+                select: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: [], error: { message: 'Network Error' } }),
+                    then: (resolve: any) => resolve({ data: [], error: { message: 'Network Error' } })
+                })
+            }))
+        } as any);
+
+        await db.sales_queue.add({ id: '3', status: 'pending', created_at: '2026-01-01T10:00:00Z', payload: { id: 'temp-3' }, attempt_count: 0, entity: 'customers', action: 'insert' } as any);
 
         const { result } = renderHook(() => useSyncQueue());
 

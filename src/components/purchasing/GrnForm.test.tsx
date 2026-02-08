@@ -86,7 +86,10 @@ describe('Purchasing Flow (Offline-First)', () => {
         (db.sales_queue as any) = {
             add: vi.fn().mockResolvedValue('q-id')
         };
-        (db.transaction as any) = vi.fn((mode, tables, cb) => cb()); // execute transaction immediately
+        (db.transaction as any) = vi.fn((...args) => {
+            const callback = args[args.length - 1];
+            return callback();
+        });
     });
 
     it('requires Batch/Expiry fields for Batch Tracked items', async () => {
