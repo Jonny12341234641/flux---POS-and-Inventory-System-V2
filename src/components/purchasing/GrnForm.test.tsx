@@ -10,6 +10,9 @@ vi.mock('next/navigation', () => ({
     useRouter: () => ({
         push: vi.fn(),
     }),
+    useSearchParams: () => ({
+        get: vi.fn().mockReturnValue(null),
+    }),
 }));
 
 vi.mock('sonner', () => ({
@@ -85,6 +88,13 @@ describe('Purchasing Flow (Offline-First)', () => {
         };
         (db.sales_queue as any) = {
             add: vi.fn().mockResolvedValue('q-id')
+        };
+        (db.purchase_orders as any) = {
+            get: vi.fn().mockResolvedValue(null)
+        };
+        (db.purchase_order_lines as any) = {
+            where: vi.fn().mockReturnThis(),
+            toArray: vi.fn().mockResolvedValue([])
         };
         (db.transaction as any) = vi.fn((...args) => {
             const callback = args[args.length - 1];

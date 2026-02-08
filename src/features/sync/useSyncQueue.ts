@@ -77,6 +77,67 @@ export function useSyncQueue() {
                                 error = lineError;
                             }
 
+
+                        } else if (item.entity === 'purchase_orders') {
+                            // Purchase Orders
+                            if (item.action === 'insert' || item.action === 'update') {
+                                if (item.payload.status === 'approved') {
+                                    // Call RPC
+                                    const { error: rpcError } = await supabase.rpc('post_purchase_order', { po_id: item.payload.id });
+                                    error = rpcError;
+                                    // Idempotency check could be added here if needed
+                                } else {
+                                    const { error: upsertError } = await supabase.from('purchase_orders').upsert(item.payload);
+                                    error = upsertError;
+                                }
+                            } else {
+                                const { error: delError } = await supabase.from('purchase_orders').delete().eq('id', item.payload.id);
+                                error = delError;
+                            }
+
+                        } else if (item.entity === 'purchase_order_lines') {
+                            if (item.action === 'insert' || item.action === 'update') {
+                                const { error: lineError } = await supabase.from('purchase_order_lines').upsert(item.payload);
+                                error = lineError;
+                            } else {
+                                const { error: lineError } = await supabase.from('purchase_order_lines').delete().eq('id', item.payload.id);
+                                error = lineError;
+                            }
+
+                        } else if (item.entity === 'stock_transfers') {
+                            // Stock Transfers
+                            if (item.action === 'insert' || item.action === 'update') {
+                                if (item.payload.status === 'in_transit') {
+                                    // Sending Transfer
+                                    // Only call RPC if we are transitioning. Use upsert for properties, then RPC? 
+                                    // Or RPC handles everything? The RPC updates status. 
+                                    // We should probably ensure the record exists first if it's new, but typically it's created as pending first.
+                                    // Logic: If it's a new 'in_transit' record (unlikely) or update.
+                                    const { error: rpcError } = await supabase.rpc('post_stock_transfer_out', { transfer_id: item.payload.id });
+                                    error = rpcError;
+                                } else if (item.payload.status === 'completed') {
+                                    // Receiving Transfer
+                                    const { error: rpcError } = await supabase.rpc('receive_stock_transfer', { transfer_id: item.payload.id });
+                                    error = rpcError;
+                                } else {
+                                    // Pending or other updates
+                                    const { error: upsertError } = await supabase.from('stock_transfers').upsert(item.payload);
+                                    error = upsertError;
+                                }
+                            } else {
+                                const { error: delError } = await supabase.from('stock_transfers').delete().eq('id', item.payload.id);
+                                error = delError;
+                            }
+
+                        } else if (item.entity === 'stock_transfer_lines') {
+                            if (item.action === 'insert' || item.action === 'update') {
+                                const { error: lineError } = await supabase.from('stock_transfer_lines').upsert(item.payload);
+                                error = lineError;
+                            } else {
+                                const { error: lineError } = await supabase.from('stock_transfer_lines').delete().eq('id', item.payload.id);
+                                error = lineError;
+                            }
+
                         } else {
                             // Generic handler for other entities (Suppliers, Customers, etc.)
                             if (item.action === 'insert') {
@@ -155,6 +216,24 @@ export function useSyncQueue() {
             const { data: grns, error: grnError } = await supabase.from('grns').select('*').limit(100);
             if (!grnError && grns) {
                 await db.grns.bulkPut(grns);
+            }
+
+            // Pull Purchase Orders
+            const { data: pos, error: poError } = await supabase.from('purchase_orders').select('*').limit(100);
+            if (!poError && pos) {
+                await db.purchase_orders.bulkPut(pos);
+            }
+
+            // Pull Purchase Order Lines
+            // const { data: poLines, error: poLineError } = await supabase.from('purchase_order_lines').select('*').limit(500);
+            // if (!poLineError && poLines) {
+            //    await db.purchase_order_lines.bulkPut(poLines);
+            // }
+
+            // Pull Transfers
+            const { data: transfers, error: trError } = await supabase.from('stock_transfers').select('*').limit(100);
+            if (!trError && transfers) {
+                await db.stock_transfers.bulkPut(transfers);
             }
 
             // Pull GRN Lines (related to above? For now simple fetch)

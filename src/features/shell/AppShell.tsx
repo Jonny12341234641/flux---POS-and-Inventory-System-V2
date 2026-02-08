@@ -17,8 +17,10 @@ const nav = [
     { label: "Items", href: "/app/catalog/items" },
     { label: "Suppliers", href: "/app/catalog/suppliers" },
     { label: "Customers", href: "/app/sales/customers" },
+    { label: "Purchase Orders", href: "/app/purchasing/orders" },
     { label: "Purchasing (GRN)", href: "/app/purchasing/grn" },
     { label: "Inventory", href: "/app/inventory" },
+    { label: "Stock Transfers", href: "/app/inventory/transfers" },
     { label: "POS", href: "/app/pos" },
     { label: "Sync", href: "/app/sync" },
 ];

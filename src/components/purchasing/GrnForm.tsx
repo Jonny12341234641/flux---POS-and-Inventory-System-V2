@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,25 +57,18 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
     });
 
     // Load existing GRN if editing
+    const searchParams = useSearchParams();
+    const poId = searchParams.get('po_id');
+
     useEffect(() => {
         if (grnId) {
             db.grns.get(grnId).then(async (grn) => {
                 if (grn && grn.status === 'draft') {
                     const lines = await db.grn_lines.where('grn_id').equals(grn.id).toArray();
-                    // Fetch batch/expiry from stock_lots if needed? 
-                    // Actually, grn_lines stores lot_id, need to resolve that to batch/expiry for UI?
-                    // For simplicity in this sprint, we might store batch/expiry in grn_lines momentarily or resolve it.
-                    // Let's assume for now we just load basic line info.
 
                     setValue('supplier_id', grn.supplier_id || '');
                     setValue('received_date', grn.received_date ? format(new Date(grn.received_date), 'yyyy-MM-dd') : '');
                     setValue('reference_number', grn.reference_number || '');
-
-                    // Map lines (This part is tricky if we normalization batch info. 
-                    // If we stored lot_id, we need to fetch lot info to show batch no.
-                    // For now, let's assume lines just load basic info and user re-enters if missing?)
-                    // A better approach for V1: Store batch/expiry in grn_lines as transient data or 
-                    // fetch the lot.
 
                     const formattedLines = await Promise.all(lines.map(async l => {
                         let batch_number = '';
@@ -99,8 +92,29 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                     setValue('lines', formattedLines.length ? formattedLines : [{ item_id: '', quantity: 1, cost: 0 }]);
                 }
             });
+        } else if (poId) {
+            // Load from PO
+            db.purchase_orders.get(poId).then(async (po) => {
+                if (po) {
+                    setValue('supplier_id', po.supplier_id || '');
+                    setValue('reference_number', po.reference_number || ''); // Maybe prefix?
+
+                    const lines = await db.purchase_order_lines.where('po_id').equals(po.id).toArray();
+                    const formattedLines = lines.map(l => ({
+                        item_id: l.item_id,
+                        quantity: l.quantity_ordered, // Default to ordered qty
+                        cost: l.unit_cost || 0,
+                        batch_number: '',
+                        expiry_date: ''
+                    }));
+
+                    if (formattedLines.length > 0) {
+                        setValue('lines', formattedLines);
+                    }
+                }
+            });
         }
-    }, [grnId, setValue]);
+    }, [grnId, poId, setValue]);
 
     // Submit Handler
     const onSubmit = async (data: GrnFormValues, event?: React.BaseSyntheticEvent) => {

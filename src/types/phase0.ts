@@ -105,7 +105,13 @@ export type OutboxEntity =
     | "stock_moves"
     | "stock_balances"
     | "grns"
-    | "grn_lines";
+    | "grn_lines"
+    | "purchase_orders"
+    | "purchase_order_lines"
+    | "stock_transfers"
+    | "stock_transfer_lines"
+    | "purchase_returns"
+    | "purchase_return_lines";
 
 export type OutboxAction = "insert" | "update" | "delete";
 
