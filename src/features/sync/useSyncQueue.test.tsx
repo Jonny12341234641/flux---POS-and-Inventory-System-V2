@@ -16,6 +16,18 @@ vi.mock('@/lib/db', () => {
 
     return {
         db: {
+            // Master Data Stores
+            categories: { bulkPut: vi.fn(), toArray: vi.fn() },
+            units: { bulkPut: vi.fn(), toArray: vi.fn() },
+            locations: { bulkPut: vi.fn(), toArray: vi.fn() },
+            user_profiles: { bulkPut: vi.fn(), toArray: vi.fn() },
+            suppliers: { bulkPut: vi.fn(), toArray: vi.fn() },
+            customers: { bulkPut: vi.fn(), toArray: vi.fn() },
+            stock_lots: { bulkPut: vi.fn(), toArray: vi.fn() },
+            stock_balances: { bulkPut: vi.fn(), toArray: vi.fn() },
+            grns: { bulkPut: vi.fn(), toArray: vi.fn() },
+            grn_lines: { bulkPut: vi.fn(), toArray: vi.fn() },
+
             sales_queue: {
                 add: async (item: any) => mockStorage.set(item.id, item),
                 get: async (id: string) => mockStorage.get(id),
