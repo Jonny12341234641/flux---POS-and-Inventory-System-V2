@@ -33,6 +33,10 @@ export class FluxPOSDB extends Dexie {
     stock_lots!: Table<StockLot, UUID>;
     stock_balances!: Table<StockBalance, UUID>;
 
+    // Sprint 2 Stores
+    grns!: Table<any, UUID>;
+    grn_lines!: Table<any, UUID>;
+
 
     // We typically don't cache full sales history offline in Phase 0, 
     // just the queue for *new* offline sales.
@@ -44,7 +48,7 @@ export class FluxPOSDB extends Dexie {
         // UPGRADE NOTICE: If you already ran the app, you might need to delete 
         // the old DB in browser DevTools > Application > Storage > IndexedDB 
         // to force this new version to create.
-        this.version(2).stores({
+        this.version(3).stores({
             // Indexing rules: 
             // id is primary key. 
             // location_id is needed for RLS filtering offline.
@@ -59,7 +63,11 @@ export class FluxPOSDB extends Dexie {
             suppliers: 'id, location_id, name',
             customers: 'id, location_id, name, mobile',
             stock_lots: 'id, location_id, item_id, batch_number',
-            stock_balances: 'id, location_id, item_id, lot_id'
+            stock_balances: 'id, location_id, item_id, lot_id',
+
+            // Sprint 2 Stores (Purchasing)
+            grns: 'id, location_id, supplier_id, status, received_date',
+            grn_lines: 'id, grn_id, item_id'
         });
 
     }

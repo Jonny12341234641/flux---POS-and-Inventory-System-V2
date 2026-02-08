@@ -40,11 +40,43 @@ export function useSyncQueue() {
 
                         // Switch logic based on entity
                         if (item.entity === 'sales_invoices') {
-                            // Keep using RPC for complex sales transaction if needed, 
-                            // or switch to direct insert if backend supports it.
-                            // Assuming 'post_sale' is still the way for sales.
+                            // Keep using RPC for complex sales transaction if needed
                             const res = await supabase.rpc('post_sale', { payload: item.payload });
                             error = res.error;
+
+                        } else if (item.entity === 'grns') {
+                            // Handle GRN Sync
+                            if (item.action === 'insert' || item.action === 'update') {
+                                // If it's a posted GRN, we need to call the RPC to finalize stock
+                                // Check the payload status
+                                if (item.payload.status === 'posted') {
+                                    // Call safe RPC
+                                    const { error: rpcError } = await supabase.rpc('post_grn', { grn_id: item.payload.id });
+                                    error = rpcError;
+                                    if (error && error.message.includes("already posted")) {
+                                        // Idempotency: treat as success
+                                        error = null;
+                                    }
+                                } else {
+                                    const { error: upsertError } = await supabase.from('grns').upsert(item.payload);
+                                    error = upsertError;
+                                }
+                            } else {
+                                // Delete?
+                                const { error: delError } = await supabase.from('grns').delete().eq('id', item.payload.id);
+                                error = delError;
+                            }
+
+                        } else if (item.entity === 'grn_lines') {
+                            // GRN Lines
+                            if (item.action === 'insert' || item.action === 'update') {
+                                const { error: lineError } = await supabase.from('grn_lines').upsert(item.payload);
+                                error = lineError;
+                            } else {
+                                const { error: lineError } = await supabase.from('grn_lines').delete().eq('id', item.payload.id);
+                                error = lineError;
+                            }
+
                         } else {
                             // Generic handler for other entities (Suppliers, Customers, etc.)
                             if (item.action === 'insert') {
@@ -118,6 +150,19 @@ export function useSyncQueue() {
             if (!balError && balances) {
                 await db.stock_balances.bulkPut(balances);
             }
+
+            // Pull GRNs (Last 30 days maybe? For now all)
+            const { data: grns, error: grnError } = await supabase.from('grns').select('*').limit(100);
+            if (!grnError && grns) {
+                await db.grns.bulkPut(grns);
+            }
+
+            // Pull GRN Lines (related to above? For now simple fetch)
+            // In a real app we might lazy load these or sync intelligently
+            // const { data: grnLines, error: grnLineError } = await supabase.from('grn_lines').select('*').limit(500);
+            // if (!grnLineError && grnLines) {
+            //    await db.grn_lines.bulkPut(grnLines);
+            // }
 
             console.log('Master data pulled successfully.');
 
