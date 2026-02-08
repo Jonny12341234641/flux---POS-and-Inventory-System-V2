@@ -18,63 +18,68 @@ export function useSyncQueue() {
         try {
             const supabase = createClient();
 
-            // Fetch pending items sorted by created_at (FIFO)
-            // Dexie: use toArray() then sort or use orderBy if index exists. 
-            // We indexed 'status' and 'created_at' in db.ts? check db.ts
-            // Actually we indexed 'sales_queue: id, status, created_at'
-
             const pendingItems = await db.sales_queue
                 .where('status').equals('pending')
                 .or('status').equals('PENDING')
                 .toArray();
 
-            // Sort in memory since we can't easily compound index sort with 'OR' in basic dexie without generated index
             pendingItems.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
             if (pendingItems.length === 0) {
-                setIsProcessing(false);
-                processingRef.current = false;
-                return;
-            }
+                // Even if nothing to push, we might want to pull? 
+                // Usually push first then pull to get latest state including our own if we want.
+                // But let's keep them separate or sequential.
+            } else {
+                console.log(`Processing ${pendingItems.length} offline items...`);
 
-            console.log(`Processing ${pendingItems.length} offline items...`);
+                for (const item of pendingItems) {
+                    if (!navigator.onLine) break;
 
-            for (const item of pendingItems) {
-                // Double check online status before each request
-                if (!navigator.onLine) break;
+                    try {
+                        let error = null;
 
-                try {
-                    // RPC Call
-                    const { error } = await supabase.rpc('post_sale', { payload: item.payload });
+                        // Switch logic based on entity
+                        if (item.entity === 'sales_invoices') {
+                            // Keep using RPC for complex sales transaction if needed, 
+                            // or switch to direct insert if backend supports it.
+                            // Assuming 'post_sale' is still the way for sales.
+                            const res = await supabase.rpc('post_sale', { payload: item.payload });
+                            error = res.error;
+                        } else {
+                            // Generic handler for other entities (Suppliers, Customers, etc.)
+                            if (item.action === 'insert') {
+                                const res = await supabase.from(item.entity).insert(item.payload);
+                                error = res.error;
+                            } else if (item.action === 'update') {
+                                const res = await supabase.from(item.entity).update(item.payload).eq('id', item.payload.id);
+                                error = res.error;
+                            } else if (item.action === 'delete') {
+                                const res = await supabase.from(item.entity).delete().eq('id', item.payload.id);
+                                error = res.error;
+                            } else {
+                                console.warn(`Unknown action ${item.action} for item ${item.id}`);
+                                continue; // Skip unknown actions
+                            }
+                        }
 
-                    if (error) throw error;
+                        if (error) throw error;
 
-                    // Success: Mark as synced
-                    await db.sales_queue.update(item.id, {
-                        status: 'synced', // Let's use UPPERCASE for status normally, but user used lowercase pending. 
-                        // I'll stick to 'SYNCED' for final state.
-                        last_error: null,
-                        attempt_count: (item.attempt_count || 0) + 1
-                    });
+                        await db.sales_queue.update(item.id, {
+                            status: 'synced',
+                            last_error: null,
+                            attempt_count: (item.attempt_count || 0) + 1
+                        });
 
-                } catch (err: any) {
-                    console.error('Sync failed for item', item.id, err);
-
-                    // Failure: Update status
-                    await db.sales_queue.update(item.id, {
-                        status: 'failed',
-                        last_error: err.message || 'Unknown error',
-                        attempt_count: (item.attempt_count || 0) + 1
-                    });
-
-                    // If network error, maybe stop processing loop? 
-                    // Supabase JS often returns error object even for network, but let's verify if generic fetch error.
-                    // For now, continue to try next or stop? Safer to stop if it's a connection issue.
-                    // Getting detailed error code from supabase can be tricky.
-                    // We'll just continue for now unless we detect offline.
+                    } catch (err: any) {
+                        console.error(`Sync failed for item ${item.id} (${item.entity})`, err);
+                        await db.sales_queue.update(item.id, {
+                            status: 'failed',
+                            last_error: err.message || 'Unknown error',
+                            attempt_count: (item.attempt_count || 0) + 1
+                        });
+                    }
                 }
             }
-
         } catch (error) {
             console.error('Sync Queue Global Error:', error);
         } finally {
@@ -83,24 +88,63 @@ export function useSyncQueue() {
         }
     }, []);
 
-    // Auto-sync on online event
+    // New Pull Logic
+    const pullMasterData = useCallback(async () => {
+        if (!navigator.onLine) return;
+        console.log('Pulling master data...');
+        const supabase = createClient();
+
+        try {
+            // Pull Suppliers
+            const { data: suppliers, error: supError } = await supabase.from('suppliers').select('*');
+            if (!supError && suppliers) {
+                await db.suppliers.bulkPut(suppliers);
+            }
+
+            // Pull Customers
+            const { data: customers, error: custError } = await supabase.from('customers').select('*');
+            if (!custError && customers) {
+                await db.customers.bulkPut(customers);
+            }
+
+            // Pull Stock Lots (Optional: might be heavy, filter by active?)
+            const { data: lots, error: lotError } = await supabase.from('stock_lots').select('*');
+            if (!lotError && lots) {
+                await db.stock_lots.bulkPut(lots);
+            }
+
+            // Pull Stock Balances
+            const { data: balances, error: balError } = await supabase.from('stock_balances').select('*');
+            if (!balError && balances) {
+                await db.stock_balances.bulkPut(balances);
+            }
+
+            console.log('Master data pulled successfully.');
+
+        } catch (error) {
+            console.error('Error pulling master data:', error);
+        }
+    }, []);
+
+    // Auto-sync on online event and mount
     useEffect(() => {
         const handleOnline = () => {
             console.log('App is online. Triggering sync...');
-            processQueue();
+            processQueue().then(() => pullMasterData());
         };
 
         window.addEventListener('online', handleOnline);
 
-        // Also trigger once on mount if already online
         if (navigator.onLine) {
-            processQueue();
+            // Initial sync: Push pending, then pull latest
+            processQueue().then(() => pullMasterData());
         }
 
         return () => window.removeEventListener('online', handleOnline);
-    }, [processQueue]);
+    }, [processQueue, pullMasterData]);
 
-    return { processQueue, isProcessing };
+    return { processQueue, pullMasterData, isProcessing };
 }
+
 
 

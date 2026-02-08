@@ -18,7 +18,7 @@
 
 
 import Dexie, { type Table } from 'dexie';
-import { Item, UUID, OutboxItem, Category, Unit, Location, UserProfile } from '@/types/phase0';
+import { Item, UUID, OutboxItem, Category, Unit, Location, UserProfile, Supplier, Customer, StockLot, StockBalance } from '@/types/phase0';
 
 export class FluxPOSDB extends Dexie {
     items!: Table<Item, UUID>;
@@ -26,6 +26,13 @@ export class FluxPOSDB extends Dexie {
     units!: Table<Unit, UUID>;           // Added
     locations!: Table<Location, UUID>;   // Added
     user_profiles!: Table<UserProfile, UUID>; // Added
+
+    // Phase 1 Tables
+    suppliers!: Table<Supplier, UUID>;
+    customers!: Table<Customer, UUID>;
+    stock_lots!: Table<StockLot, UUID>;
+    stock_balances!: Table<StockBalance, UUID>;
+
 
     // We typically don't cache full sales history offline in Phase 0, 
     // just the queue for *new* offline sales.
@@ -46,8 +53,15 @@ export class FluxPOSDB extends Dexie {
             units: 'id, location_id, name',
             locations: 'id, name',
             user_profiles: 'user_id, location_id',
-            sales_queue: 'id, status, created_at'
+            sales_queue: 'id, status, created_at',
+
+            // Phase 1 Stores
+            suppliers: 'id, location_id, name',
+            customers: 'id, location_id, name, mobile',
+            stock_lots: 'id, location_id, item_id, batch_number',
+            stock_balances: 'id, location_id, item_id, lot_id'
         });
+
     }
 }
 

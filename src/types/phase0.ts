@@ -50,8 +50,10 @@ export interface Item {
     unit_id: UUID | null;
     name: string;
     barcode: string | null;
-    sale_price: number; // Supabase returns numeric as string sometimes; handle carefully in code
+    sale_price: number;
     cost: number;
+    is_batch_tracked: boolean; // Added in Phase 1
+    expiry_warning_days: number | null; // Added in Phase 1
     created_at: ISODateTime;
     updated_at: ISODateTime;
     created_by: UUID | null;
@@ -96,7 +98,14 @@ export type OutboxEntity =
     | "units"
     | "items"
     | "sales_invoices"
-    | "sales_invoice_lines";
+    | "sales_invoice_lines"
+    | "suppliers"
+    | "customers"
+    | "stock_lots"
+    | "stock_moves"
+    | "stock_balances"
+    | "grns"
+    | "grn_lines";
 
 export type OutboxAction = "insert" | "update" | "delete";
 
@@ -116,4 +125,91 @@ export interface OutboxItem<TPayload = any> {
     created_at: ISODateTime;
     attempt_count: number;
     last_error: string | null;
+}
+
+// ---------- Phase 1 Entities ----------
+
+export interface Supplier {
+    id: UUID;
+    location_id: UUID;
+    name: string;
+    supplier_no: string | null;
+    contact_info: string | null;
+    credit_days: number | null;
+    created_at: ISODateTime;
+    updated_at: ISODateTime;
+    created_by: UUID | null;
+}
+
+export interface Customer {
+    id: UUID;
+    location_id: UUID;
+    name: string;
+    mobile: string | null;
+    email: string | null;
+    credit_limit: number | null;
+    credit_days: number | null;
+    created_at: ISODateTime;
+    updated_at: ISODateTime;
+    created_by: UUID | null;
+}
+
+export interface StockLot {
+    id: UUID;
+    location_id: UUID;
+    item_id: UUID;
+    batch_number: string | null;
+    expiry_date: ISODateTime | null;
+    created_at: ISODateTime;
+    updated_at: ISODateTime;
+    created_by: UUID | null;
+}
+
+export interface StockMove {
+    id: UUID;
+    location_id: UUID;
+    item_id: UUID;
+    lot_id: UUID | null;
+    quantity_change: number;
+    move_type: string;
+    reference_id: UUID | null;
+    created_at: ISODateTime;
+    updated_at: ISODateTime;
+    created_by: UUID | null;
+}
+
+export interface StockBalance {
+    id: UUID;
+    location_id: UUID;
+    item_id: UUID;
+    lot_id: UUID | null;
+    quantity_on_hand: number;
+    created_at: ISODateTime;
+    updated_at: ISODateTime;
+    created_by: UUID | null;
+}
+
+export interface GRN {
+    id: UUID;
+    location_id: UUID;
+    supplier_id: UUID | null;
+    status: 'draft' | 'posted';
+    reference_number: string | null;
+    received_date: ISODateTime | null;
+    created_at: ISODateTime;
+    updated_at: ISODateTime;
+    created_by: UUID | null;
+}
+
+export interface GRNLine {
+    id: UUID;
+    location_id: UUID;
+    grn_id: UUID;
+    item_id: UUID;
+    lot_id: UUID | null;
+    quantity: number;
+    cost: number;
+    created_at: ISODateTime;
+    updated_at: ISODateTime;
+    created_by: UUID | null;
 }

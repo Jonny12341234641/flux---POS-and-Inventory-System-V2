@@ -19,6 +19,8 @@ type ItemRow = {
     category?: { name: string } | null;
     // CHANGED: symbol -> short_code
     unit?: { name: string; short_code: string | null } | null;
+    is_batch_tracked: boolean;
+    expiry_warning_days: number | null;
 };
 
 function friendlyErrorMessage(msg: string) {
@@ -58,6 +60,8 @@ export default function ItemsPage() {
     const [cost, setCost] = useState("");
     const [categoryId, setCategoryId] = useState("");
     const [unitId, setUnitId] = useState("");
+    const [isBatchTracked, setIsBatchTracked] = useState(false);
+    const [expiryWarningDays, setExpiryWarningDays] = useState("");
 
     function resetForm() {
         setEditingId(null);
@@ -67,6 +71,8 @@ export default function ItemsPage() {
         setCost("");
         setCategoryId("");
         setUnitId("");
+        setIsBatchTracked(false);
+        setExpiryWarningDays("");
     }
 
     async function loadAll() {
@@ -110,7 +116,9 @@ export default function ItemsPage() {
           category_id,
           unit_id,
           category:categories(name),
-          unit:units(name, short_code)
+          unit:units(name, short_code),
+          is_batch_tracked,
+          expiry_warning_days
         `
                 )
                 .order("created_at", { ascending: false });
@@ -144,6 +152,8 @@ export default function ItemsPage() {
         setCost(row.cost ?? "");
         setCategoryId(row.category_id ?? "");
         setUnitId(row.unit_id ?? "");
+        setIsBatchTracked(row.is_batch_tracked ?? false);
+        setExpiryWarningDays(row.expiry_warning_days ? String(row.expiry_warning_days) : "");
     }
 
     async function onSave() {
@@ -176,6 +186,8 @@ export default function ItemsPage() {
                 category_id: categoryId,
                 unit_id: unitId,
                 location_id: locationId,
+                is_batch_tracked: isBatchTracked,
+                expiry_warning_days: expiryWarningDays ? Number(expiryWarningDays) : null,
             };
 
             if (!editingId) {
@@ -326,6 +338,36 @@ export default function ItemsPage() {
                             inputMode="decimal"
                         />
                     </div>
+
+                    <div className="md:col-span-2 border rounded p-3 bg-gray-50 flex flex-col gap-3">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="isBatchTracked"
+                                className="w-4 h-4 rounded border-gray-300"
+                                checked={isBatchTracked}
+                                onChange={e => setIsBatchTracked(e.target.checked)}
+                            />
+                            <label htmlFor="isBatchTracked" className="text-sm font-medium">Batch / Expiry Tracking</label>
+                        </div>
+
+                        {isBatchTracked && (
+                            <div>
+                                <label className="text-sm font-medium">Expiry Warning Days (optional)</label>
+                                <input
+                                    type="number"
+                                    className="mt-1 w-full border rounded px-3 py-2 bg-white"
+                                    value={expiryWarningDays}
+                                    onChange={(e) => setExpiryWarningDays(e.target.value)}
+                                    placeholder="e.g. 30"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Alerts will be shown this many days before expiry.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
                 </div>
 
                 <div className="flex gap-2">
@@ -366,6 +408,7 @@ export default function ItemsPage() {
                                 <th className="p-3">Unit</th>
                                 <th className="p-3">Sale Price</th>
                                 <th className="p-3">Cost</th>
+                                <th className="p-3">Attrs</th>
                                 <th className="p-3">Actions</th>
                             </tr>
                         </thead>
@@ -391,6 +434,11 @@ export default function ItemsPage() {
                                     </td>
                                     <td className="p-3">{it.sale_price ?? "-"}</td>
                                     <td className="p-3">{it.cost ?? "-"}</td>
+                                    <td className="p-3">
+                                        {it.is_batch_tracked && (
+                                            <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs">Batch</span>
+                                        )}
+                                    </td>
                                     <td className="p-3">
                                         <div className="flex gap-2">
                                             <button
