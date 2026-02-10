@@ -14,6 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Save, CheckCircle, PackageCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
+const UNKNOWN_LOCATION_UUID = "00000000-0000-0000-0000-000000000000";
+
 // --- Zod Schema ---
 const poLineSchema = z.object({
     item_id: z.string().min(1, "Item is required"),
@@ -44,6 +46,7 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
     const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<PoFormValues>({
         resolver: zodResolver(poSchema),
         defaultValues: {
+            supplier_id: '',
             expected_date: format(new Date(), 'yyyy-MM-dd'),
             lines: [{ item_id: '', quantity_ordered: 1, unit_cost: 0 }]
         }
@@ -90,7 +93,7 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                     // Upsert PO
                     await db.purchase_orders.put({
                         id,
-                        location_id: 'UNKNOWN', // Should get from context
+                        location_id: UNKNOWN_LOCATION_UUID, // Should get from context
                         supplier_id: data.supplier_id,
                         expected_date: data.expected_date ? new Date(data.expected_date).toISOString() : null,
                         reference_number: data.reference_number || null,
@@ -124,7 +127,7 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                             id: crypto.randomUUID(),
                             entity: 'purchase_order_lines',
                             action: 'insert',
-                            location_id: 'UNKNOWN',
+                            location_id: UNKNOWN_LOCATION_UUID,
                             payload: linePayload,
                             status: 'pending',
                             created_at: new Date().toISOString(),
@@ -138,10 +141,10 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                         id: crypto.randomUUID(),
                         entity: 'purchase_orders',
                         action: poId ? 'update' : 'insert',
-                        location_id: 'UNKNOWN',
+                        location_id: UNKNOWN_LOCATION_UUID,
                         payload: {
                             id,
-                            location_id: 'UNKNOWN',
+                            location_id: UNKNOWN_LOCATION_UUID,
                             supplier_id: data.supplier_id,
                             status: targetStatus,
                             expected_date: data.expected_date ? new Date(data.expected_date).toISOString() : null,
@@ -182,8 +185,7 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                     <Label>Supplier</Label>
                     <select
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        value={watch('supplier_id')}
-                        onChange={(e) => setValue('supplier_id', e.target.value)}
+                        {...register('supplier_id')}
                         disabled={isReadOnly}
                     >
                         <option value="" disabled>Select Supplier</option>
