@@ -108,17 +108,17 @@ describe('TransferOutForm', () => {
         render(<TransferOutForm />);
 
         // Select Source: Branch A
-        const sourceSelect = screen.getByLabelText(/Source Branch/i);
+        const selects = screen.getAllByRole('combobox');
+        const sourceSelect = selects[0];
         await user.selectOptions(sourceSelect, 'loc-1');
 
         // Select Target: Branch A
-        const targetSelect = screen.getByLabelText(/Target Branch/i);
+        const targetSelect = selects[1];
         await user.selectOptions(targetSelect, 'loc-1');
 
         // Select Item (to ensure form is valid otherwise)
-        const itemSelects = screen.getAllByRole('combobox');
         // 0: Source, 1: Target, 2: Item in row
-        await user.selectOptions(itemSelects[2], 'item-1');
+        await user.selectOptions(selects[2], 'item-1');
 
         // Submit
         const sendButton = screen.getByText(/Send Transfer/i);
@@ -139,15 +139,16 @@ describe('TransferOutForm', () => {
         render(<TransferOutForm />);
 
         // Source A, Target B
-        const sourceSelect = screen.getByLabelText(/Source Branch/i);
+        const selects = screen.getAllByRole('combobox');
+        const sourceSelect = selects[0];
         await user.selectOptions(sourceSelect, 'loc-1');
 
-        const targetSelect = screen.getByLabelText(/Target Branch/i);
+        const targetSelect = selects[1];
         await user.selectOptions(targetSelect, 'loc-2');
 
         // Item X, Qty 10
-        const itemSelects = screen.getAllByRole('combobox');
-        await user.selectOptions(itemSelects[2], 'item-1');
+        // checks selects[2]
+        await user.selectOptions(selects[2], 'item-1');
 
         const qtyInput = screen.getByRole('spinbutton'); // quantity input in row
         await user.clear(qtyInput);
@@ -170,22 +171,31 @@ describe('TransferOutForm', () => {
         render(<TransferOutForm />);
 
         // Source A -> Target B
-        const sourceSelect = screen.getByLabelText(/Source Branch/i);
-        await user.selectOptions(sourceSelect, 'loc-1');
+        const selects = screen.getAllByRole('combobox');
+        const sourceSelect = selects[0]; // Source
+        const targetSelect = selects[1]; // Target
 
-        const targetSelect = screen.getByLabelText(/Target Branch/i);
+        await user.selectOptions(sourceSelect, 'loc-1');
         await user.selectOptions(targetSelect, 'loc-2');
 
         // Item X, Qty 10
-        const itemSelects = screen.getAllByRole('combobox');
-        await user.selectOptions(itemSelects[2], 'item-1');
+        // Item is selects[2]
+        await user.selectOptions(selects[2], 'item-1');
 
         const qtyInput = screen.getByRole('spinbutton');
         await user.clear(qtyInput);
         await user.type(qtyInput, '10');
 
         // Input Date
-        const dateInput = screen.getByLabelText(/Date/i);
+        // Label not associated, find by type
+        // const { container } returned by render, but need to grab it.
+        // Actually, render return destructuring.
+        // Let's assume we can query by type using generic queries or just expect only one date input.
+        // Since we can't easily access container unless we change render call, let's use:
+        // document.querySelector inside the test since jsdom sets global document.
+        const dateInput = document.querySelector('input[type="date"]');
+        if (!dateInput) throw new Error("Date input not found");
+
         await fireEvent.change(dateInput, { target: { value: '2023-10-25' } });
 
         // Submit
