@@ -138,6 +138,41 @@ export function useSyncQueue() {
                                 error = lineError;
                             }
 
+                        } else if (item.entity === 'sales_transaction') {
+                            // Complex Sale Transaction via RPC
+                            // Payload: { invoice, lines, payments }
+                            const { error: rpcError } = await supabase.rpc('post_sale_transaction', { payload: item.payload });
+                            error = rpcError;
+                            // Idempotency is handled inside RPC (checks invoice_number + location)
+
+                        } else if (item.entity === 'sales_return') {
+                            // Sales Return Logic
+                            // Payload: { return: Object, lines: Array }
+                            // 1. Insert/Upsert Return Header & Lines
+                            // 2. Call RPC to Post (Stock impact)
+                            const returnData = item.payload.return;
+                            const linesData = item.payload.lines;
+
+                            // A. Upsert Header
+                            const { error: headError } = await supabase.from('sales_returns').upsert(returnData);
+                            if (headError) throw headError;
+
+                            // B. Upsert Lines
+                            if (linesData && linesData.length > 0) {
+                                const { error: linesError } = await supabase.from('sales_return_lines').upsert(linesData);
+                                if (linesError) throw linesError;
+                            }
+
+                            // C. Post (if status is 'posted' in payload, we assume we want to finalize it)
+                            // If it was validly created, we post it.
+                            if (returnData.status === 'posted') {
+                                const { error: rpcError } = await supabase.rpc('post_sales_return', { return_id: returnData.id });
+                                // Ignore "Already posted" error for idempotency
+                                if (rpcError && !rpcError.message.includes('Already posted')) {
+                                    throw rpcError;
+                                }
+                            }
+
                         } else {
                             // Generic handler for other entities (Suppliers, Customers, etc.)
                             if (item.action === 'insert') {
@@ -236,12 +271,26 @@ export function useSyncQueue() {
                 await db.stock_transfers.bulkPut(transfers);
             }
 
-            // Pull GRN Lines (related to above? For now simple fetch)
-            // In a real app we might lazy load these or sync intelligently
-            // const { data: grnLines, error: grnLineError } = await supabase.from('grn_lines').select('*').limit(500);
-            // if (!grnLineError && grnLines) {
-            //    await db.grn_lines.bulkPut(grnLines);
-            // }
+            // Pull Sales History (Recent 100 for returns)
+            const { data: sales, error: salesError } = await supabase.from('sales_invoices').select('*').order('created_at', { ascending: false }).limit(100);
+            if (!salesError && sales) {
+                await db.sales_invoices.bulkPut(sales);
+
+                // Pull related lines
+                const invoiceIds = sales.map(s => s.id);
+                if (invoiceIds.length > 0) {
+                    const { data: sLines, error: slError } = await supabase.from('sales_invoice_lines').select('*').in('invoice_id', invoiceIds);
+                    if (!slError && sLines) {
+                        await db.sales_invoice_lines.bulkPut(sLines);
+                    }
+                }
+            }
+
+            // Pull Sales Returns
+            const { data: returns, error: retError } = await supabase.from('sales_returns').select('*').order('created_at', { ascending: false }).limit(50);
+            if (!retError && returns) {
+                await db.sales_returns.bulkPut(returns);
+            }
 
             console.log('Master data pulled successfully.');
 

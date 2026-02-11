@@ -111,7 +111,12 @@ export type OutboxEntity =
     | "stock_transfers"
     | "stock_transfer_lines"
     | "purchase_returns"
-    | "purchase_return_lines";
+    | "purchase_return_lines"
+    | "sales_transaction"
+    | "sales_return"
+    | "sales_returns"
+    | "sales_return_lines"
+    | "payments";
 
 export type OutboxAction = "insert" | "update" | "delete";
 

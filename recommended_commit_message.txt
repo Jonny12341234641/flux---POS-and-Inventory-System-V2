@@ -1,0 +1,6 @@
+feat(pos): add offline POS and Returns modules
+
+- Implemented POS UI with product search, batch selection, and split payments.
+- Added Sales Returns module with invoice lookup and inventory updates.
+- Integrated offline-first data sync and database schema (v5).
+- Added essential UI components (Card, Dialog, Tabs) for the new modules.
