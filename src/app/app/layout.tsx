@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AppShell from "@/features/shell/AppShell";
+import { useSyncQueue } from "@/features/sync/useSyncQueue";
 
 export default function AppLayout({
     children,
@@ -14,6 +15,7 @@ export default function AppLayout({
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
     const supabase = createClient();
+    useSyncQueue(); // App-wide sync: pulls master data (locations, suppliers, etc.) and pushes pending queue items
 
     useEffect(() => {
         const checkAuth = async () => {

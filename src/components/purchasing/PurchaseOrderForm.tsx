@@ -112,6 +112,27 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                         created_by: null
                     });
 
+                    // Queue PO Header Sync FIRST (must exist before lines due to FK constraint)
+                    await db.sales_queue.add({
+                        id: crypto.randomUUID(),
+                        entity: 'purchase_orders',
+                        action: poId ? 'update' : 'insert',
+                        location_id: activeLocationId,
+                        payload: {
+                            id,
+                            location_id: activeLocationId,
+                            supplier_id: data.supplier_id,
+                            status: targetStatus,
+                            expected_date: data.expected_date ? new Date(data.expected_date).toISOString() : null,
+                            reference_number: data.reference_number || null,
+                            notes: data.notes || null
+                        },
+                        status: 'pending',
+                        created_at: new Date().toISOString(),
+                        attempt_count: 0,
+                        last_error: null
+                    });
+
                     // Handle Lines
                     if (poId) {
                         await db.purchase_order_lines.where('po_id').equals(poId).delete();
@@ -143,27 +164,6 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                             last_error: null
                         });
                     }
-
-                    // Queue PO Sync
-                    await db.sales_queue.add({
-                        id: crypto.randomUUID(),
-                        entity: 'purchase_orders',
-                        action: poId ? 'update' : 'insert',
-                        location_id: activeLocationId,
-                        payload: {
-                            id,
-                            location_id: activeLocationId,
-                            supplier_id: data.supplier_id,
-                            status: targetStatus,
-                            expected_date: data.expected_date ? new Date(data.expected_date).toISOString() : null,
-                            reference_number: data.reference_number || null,
-                            notes: data.notes || null
-                        },
-                        status: 'pending',
-                        created_at: new Date().toISOString(),
-                        attempt_count: 0,
-                        last_error: null
-                    });
                 });
 
                 toast.success(targetStatus === 'approved' ? "PO Approved!" : "Draft Saved");

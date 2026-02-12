@@ -225,6 +225,12 @@ export function useSyncQueue() {
         const supabase = createClient();
 
         try {
+            // Pull Locations (required by PO, GRN and other forms)
+            const { data: locations, error: locError } = await supabase.from('locations').select('*');
+            if (!locError && locations) {
+                await db.locations.bulkPut(locations);
+            }
+
             // Pull Suppliers
             const { data: suppliers, error: supError } = await supabase.from('suppliers').select('*');
             if (!supError && suppliers) {
