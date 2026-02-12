@@ -53,6 +53,12 @@ export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHe
     )
 }
 
+export function DialogDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
+    return (
+        <p className={cn("text-sm text-muted-foreground", className)} {...props} />
+    )
+}
+
 // Placeholder for Trigger if used, though normally it wraps a button.
 // In the current usage, we control open state externally mostly, but standard Radix allows trigger.
 // Our usage in ProductSearch passes open/onOpenChange.
