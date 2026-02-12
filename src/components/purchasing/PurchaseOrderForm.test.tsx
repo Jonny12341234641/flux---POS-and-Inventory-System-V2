@@ -56,6 +56,9 @@ vi.mock('@/lib/db', () => ({
             add: vi.fn(),
             delete: vi.fn(),
         },
+        locations: {
+            toArray: vi.fn().mockResolvedValue([{ id: 'loc-1', name: 'Main Store' }]),
+        },
         sales_queue: {
             add: vi.fn(),
         },

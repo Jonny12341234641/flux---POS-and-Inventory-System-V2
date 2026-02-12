@@ -96,6 +96,9 @@ describe('Purchasing Flow (Offline-First)', () => {
             where: vi.fn().mockReturnThis(),
             toArray: vi.fn().mockResolvedValue([])
         };
+        (db.locations as any) = {
+            toArray: vi.fn().mockResolvedValue([{ id: 'loc-1', name: 'Main Store' }]),
+        };
         (db.transaction as any) = vi.fn((...args) => {
             const callback = args[args.length - 1];
             return callback();
