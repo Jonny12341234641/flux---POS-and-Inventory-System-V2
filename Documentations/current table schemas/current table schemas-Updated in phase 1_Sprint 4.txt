@@ -1,0 +1,317 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.categories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT categories_pkey PRIMARY KEY (id),
+  CONSTRAINT categories_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT categories_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.customers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  name text NOT NULL,
+  mobile text,
+  email text,
+  credit_limit numeric,
+  credit_days integer,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT customers_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.grn_lines (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  grn_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  lot_id uuid,
+  quantity numeric NOT NULL,
+  cost numeric NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT grn_lines_pkey PRIMARY KEY (id),
+  CONSTRAINT grn_lines_grn_id_fkey FOREIGN KEY (grn_id) REFERENCES public.grns(id),
+  CONSTRAINT grn_lines_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT grn_lines_lot_id_fkey FOREIGN KEY (lot_id) REFERENCES public.stock_lots(id)
+);
+CREATE TABLE public.grns (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  supplier_id uuid,
+  status text NOT NULL DEFAULT 'draft'::text,
+  reference_number text,
+  received_date date,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT grns_pkey PRIMARY KEY (id),
+  CONSTRAINT grns_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.suppliers(id)
+);
+CREATE TABLE public.items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  category_id uuid,
+  unit_id uuid,
+  name text NOT NULL,
+  barcode text,
+  sale_price numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  cost numeric DEFAULT 0,
+  is_batch_tracked boolean DEFAULT false,
+  expiry_warning_days integer,
+  CONSTRAINT items_pkey PRIMARY KEY (id),
+  CONSTRAINT items_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT items_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id),
+  CONSTRAINT items_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.units(id),
+  CONSTRAINT items_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.locations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT locations_pkey PRIMARY KEY (id),
+  CONSTRAINT locations_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.payments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  invoice_id uuid NOT NULL,
+  method text NOT NULL CHECK (method = ANY (ARRAY['cash'::text, 'card'::text, 'credit'::text, 'other'::text])),
+  amount numeric NOT NULL CHECK (amount >= 0::numeric),
+  reference_note text,
+  created_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT payments_pkey PRIMARY KEY (id),
+  CONSTRAINT payments_invoice_id_fkey FOREIGN KEY (invoice_id) REFERENCES public.sales_invoices(id),
+  CONSTRAINT payments_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.purchase_order_lines (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  po_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  quantity_ordered numeric NOT NULL CHECK (quantity_ordered > 0::numeric),
+  unit_cost numeric DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT purchase_order_lines_pkey PRIMARY KEY (id),
+  CONSTRAINT purchase_order_lines_po_id_fkey FOREIGN KEY (po_id) REFERENCES public.purchase_orders(id),
+  CONSTRAINT purchase_order_lines_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id)
+);
+CREATE TABLE public.purchase_orders (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  supplier_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'draft'::text CHECK (status = ANY (ARRAY['draft'::text, 'approved'::text, 'received'::text, 'closed'::text])),
+  reference_number text,
+  expected_date date,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT purchase_orders_pkey PRIMARY KEY (id),
+  CONSTRAINT purchase_orders_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT purchase_orders_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.suppliers(id),
+  CONSTRAINT purchase_orders_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.purchase_return_lines (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  return_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  lot_id uuid,
+  quantity numeric NOT NULL CHECK (quantity > 0::numeric),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT purchase_return_lines_pkey PRIMARY KEY (id),
+  CONSTRAINT purchase_return_lines_return_id_fkey FOREIGN KEY (return_id) REFERENCES public.purchase_returns(id),
+  CONSTRAINT purchase_return_lines_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT purchase_return_lines_lot_id_fkey FOREIGN KEY (lot_id) REFERENCES public.stock_lots(id)
+);
+CREATE TABLE public.purchase_returns (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  supplier_id uuid NOT NULL,
+  original_grn_id uuid,
+  status text NOT NULL DEFAULT 'draft'::text CHECK (status = ANY (ARRAY['draft'::text, 'posted'::text])),
+  reason text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT purchase_returns_pkey PRIMARY KEY (id),
+  CONSTRAINT purchase_returns_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT purchase_returns_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.suppliers(id),
+  CONSTRAINT purchase_returns_original_grn_id_fkey FOREIGN KEY (original_grn_id) REFERENCES public.grns(id),
+  CONSTRAINT purchase_returns_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.sales_invoice_lines (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  sales_invoice_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  qty numeric NOT NULL DEFAULT 1 CHECK (qty >= 0::numeric),
+  unit_price numeric NOT NULL DEFAULT 0 CHECK (unit_price >= 0::numeric),
+  line_total numeric NOT NULL DEFAULT 0 CHECK (line_total >= 0::numeric),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT sales_invoice_lines_pkey PRIMARY KEY (id),
+  CONSTRAINT sales_invoice_lines_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT sales_invoice_lines_sales_invoice_id_fkey FOREIGN KEY (sales_invoice_id) REFERENCES public.sales_invoices(id),
+  CONSTRAINT sales_invoice_lines_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT sales_invoice_lines_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.sales_invoices (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  invoice_number text NOT NULL,
+  invoice_date timestamp with time zone NOT NULL DEFAULT now(),
+  subtotal numeric NOT NULL DEFAULT 0,
+  discount_total numeric NOT NULL DEFAULT 0,
+  grand_total numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT sales_invoices_pkey PRIMARY KEY (id),
+  CONSTRAINT sales_invoices_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT sales_invoices_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.sales_return_lines (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  return_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  lot_id uuid,
+  qty numeric NOT NULL CHECK (qty > 0::numeric),
+  refund_amount numeric DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT sales_return_lines_pkey PRIMARY KEY (id),
+  CONSTRAINT sales_return_lines_return_id_fkey FOREIGN KEY (return_id) REFERENCES public.sales_returns(id),
+  CONSTRAINT sales_return_lines_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT sales_return_lines_lot_id_fkey FOREIGN KEY (lot_id) REFERENCES public.stock_lots(id)
+);
+CREATE TABLE public.sales_returns (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  original_invoice_id uuid,
+  return_number text,
+  status text NOT NULL DEFAULT 'draft'::text CHECK (status = ANY (ARRAY['draft'::text, 'posted'::text])),
+  reason text,
+  refund_amount numeric DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT sales_returns_pkey PRIMARY KEY (id),
+  CONSTRAINT sales_returns_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT sales_returns_original_invoice_id_fkey FOREIGN KEY (original_invoice_id) REFERENCES public.sales_invoices(id),
+  CONSTRAINT sales_returns_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.stock_balances (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  lot_id uuid,
+  quantity_on_hand numeric DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT stock_balances_pkey PRIMARY KEY (id),
+  CONSTRAINT stock_balances_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT stock_balances_lot_id_fkey FOREIGN KEY (lot_id) REFERENCES public.stock_lots(id)
+);
+CREATE TABLE public.stock_lots (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  batch_number text,
+  expiry_date date,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT stock_lots_pkey PRIMARY KEY (id),
+  CONSTRAINT stock_lots_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id)
+);
+CREATE TABLE public.stock_moves (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  lot_id uuid,
+  quantity_change numeric NOT NULL,
+  move_type text NOT NULL,
+  reference_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT stock_moves_pkey PRIMARY KEY (id),
+  CONSTRAINT stock_moves_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT stock_moves_lot_id_fkey FOREIGN KEY (lot_id) REFERENCES public.stock_lots(id)
+);
+CREATE TABLE public.stock_transfer_lines (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  transfer_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  lot_id uuid,
+  quantity_sent numeric NOT NULL CHECK (quantity_sent > 0::numeric),
+  quantity_received numeric CHECK (quantity_received >= 0::numeric),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT stock_transfer_lines_pkey PRIMARY KEY (id),
+  CONSTRAINT stock_transfer_lines_transfer_id_fkey FOREIGN KEY (transfer_id) REFERENCES public.stock_transfers(id),
+  CONSTRAINT stock_transfer_lines_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT stock_transfer_lines_lot_id_fkey FOREIGN KEY (lot_id) REFERENCES public.stock_lots(id)
+);
+CREATE TABLE public.stock_transfers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  source_location_id uuid NOT NULL,
+  target_location_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'in_transit'::text, 'completed'::text, 'cancelled'::text])),
+  transfer_date date DEFAULT CURRENT_DATE,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT stock_transfers_pkey PRIMARY KEY (id),
+  CONSTRAINT stock_transfers_source_location_id_fkey FOREIGN KEY (source_location_id) REFERENCES public.locations(id),
+  CONSTRAINT stock_transfers_target_location_id_fkey FOREIGN KEY (target_location_id) REFERENCES public.locations(id),
+  CONSTRAINT stock_transfers_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.suppliers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  name text NOT NULL,
+  supplier_no text,
+  contact_info text,
+  credit_days integer,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT suppliers_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.units (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL,
+  name text NOT NULL,
+  short_code text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT units_pkey PRIMARY KEY (id),
+  CONSTRAINT units_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT units_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_profiles (
+  user_id uuid NOT NULL,
+  location_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'cashier'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT user_profiles_pkey PRIMARY KEY (user_id),
+  CONSTRAINT user_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT user_profiles_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
+  CONSTRAINT user_profiles_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+);

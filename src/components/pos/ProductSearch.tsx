@@ -173,7 +173,7 @@ function BatchSelectionModal({ isOpen, onClose, item, locationId, onSelect }: { 
                         </div>
                     ) : (
                         lots.map((l) => {
-                            const isExpired = l.lot.expiry_date && new Date(l.lot.expiry_date) < new Date();
+                            const isExpired = l.lot.expiry_date ? new Date(l.lot.expiry_date) < new Date() : false;
                             return (
                                 <Button
                                     key={l.lot.id}

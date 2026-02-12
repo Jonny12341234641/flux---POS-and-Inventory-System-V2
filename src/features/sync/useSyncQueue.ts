@@ -9,7 +9,9 @@ export function useSyncQueue() {
     const [isProcessing, setIsProcessing] = useState(false);
     const processingRef = useRef(false); // Ref to avoid closure stale state issues if called rapidly
 
+
     const processQueue = useCallback(async () => {
+        if (isProcessing) return; // Added from user instruction
         if (processingRef.current || !navigator.onLine) return;
 
         processingRef.current = true;
