@@ -144,14 +144,23 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                 }
 
                 // 2. Prepare Transaction
-                await db.transaction('rw', db.grns, db.grn_lines, db.stock_lots, db.sales_queue, async () => {
+                await db.transaction('rw', [db.grns, db.grn_lines, db.stock_lots, db.sales_queue, db.locations, db.purchase_orders], async () => {
+                    // Fetch active location
+                    const locations = await db.locations.toArray();
+                    const activeLocationId = locations[0]?.id;
+
+                    if (!activeLocationId) {
+                        toast.error("No active location found. Please configure a location first.");
+                        throw new Error("No active location found");
+                    }
+
                     // Upsert GRN
                     // If new, generate ID
                     const id = grnId || crypto.randomUUID();
 
                     await db.grns.put({
                         id,
-                        location_id: 'UNKNOWN', // Should get from context/auth
+                        location_id: activeLocationId,
                         supplier_id: data.supplier_id,
                         received_date: new Date(data.received_date).toISOString(),
                         reference_number: data.reference_number || null,
@@ -187,7 +196,7 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                                 lot_id = crypto.randomUUID();
                                 await db.stock_lots.add({
                                     id: lot_id,
-                                    location_id: 'UNKNOWN',
+                                    location_id: activeLocationId,
                                     item_id: line.item_id,
                                     batch_number: line.batch_number,
                                     expiry_date: line.expiry_date ? new Date(line.expiry_date).toISOString() : null,
@@ -200,10 +209,10 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                                     id: crypto.randomUUID(),
                                     entity: 'stock_lots',
                                     action: 'insert',
-                                    location_id: 'UNKNOWN',
+                                    location_id: activeLocationId,
                                     payload: {
                                         id: lot_id,
-                                        location_id: 'UNKNOWN', // TODO: Fix this
+                                        location_id: activeLocationId,
                                         item_id: line.item_id,
                                         batch_number: line.batch_number,
                                         expiry_date: line.expiry_date ? new Date(line.expiry_date).toISOString() : null
@@ -220,7 +229,7 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                         const linePayload = {
                             id: lineId,
                             grn_id: id,
-                            location_id: 'UNKNOWN',
+                            location_id: activeLocationId,
                             item_id: line.item_id,
                             lot_id,
                             quantity: line.quantity,
@@ -241,7 +250,7 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                             id: crypto.randomUUID(),
                             entity: 'grn_lines',
                             action: 'insert',
-                            location_id: 'UNKNOWN',
+                            location_id: activeLocationId,
                             payload: linePayload,
                             status: 'pending',
                             created_at: new Date().toISOString(),
@@ -255,10 +264,10 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                         id: crypto.randomUUID(),
                         entity: 'grns',
                         action: grnId ? 'update' : 'insert', // If posted, logic handles RPC call
-                        location_id: 'UNKNOWN',
+                        location_id: activeLocationId,
                         payload: {
                             id,
-                            location_id: 'UNKNOWN',
+                            location_id: activeLocationId,
                             supplier_id: data.supplier_id,
                             received_date: new Date(data.received_date).toISOString(),
                             reference_number: data.reference_number || null,
@@ -270,24 +279,35 @@ export default function GrnForm({ grnId }: { grnId?: string }) {
                         last_error: null
                     });
 
-                    // If posted, we might want to eagerly queue lines too?
-                    // The backend RPC post_grn expects lines to be there. 
-                    // So we MUST sync grn_lines too.
-                    // We did loop above, but we didn't queue grn_lines. Let's fix that.
-                    // Actually, for the RPC to work, the lines must exist in Supabase `grn_lines`.
-                    // So we need to sync them.
-                });
+                    // Close the PO Loop
+                    if (poId && status === 'posted') {
+                        await db.purchase_orders.update(poId, { status: 'received', updated_at: new Date().toISOString() });
 
-                // Re-loop for queuing lines (since we need transaction separation or just do it inside)
-                // Ideally should be one transaction. 
-                // I'll add the queue inside the loop above in next iteration/fix.
+                        await db.sales_queue.add({
+                            id: crypto.randomUUID(),
+                            entity: 'purchase_orders',
+                            action: 'update',
+                            location_id: activeLocationId,
+                            payload: {
+                                id: poId,
+                                status: 'received'
+                            },
+                            status: 'pending',
+                            created_at: new Date().toISOString(),
+                            attempt_count: 0,
+                            last_error: null
+                        });
+                    }
+                });
 
                 toast.success(status === 'posted' ? "GRN Posted!" : "Draft Saved");
                 router.push('/app/purchasing/grn');
             })();
         } catch (e) {
             console.error(e);
-            // toast.error("Failed to save GRN");
+            if ((e as Error).message !== "No active location found" && (e as Error).message !== "Validation Failed") {
+                toast.error("Failed to save GRN");
+            }
         } finally {
             setIsSubmitting(false);
         }

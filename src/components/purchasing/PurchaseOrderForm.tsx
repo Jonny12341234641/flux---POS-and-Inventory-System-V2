@@ -11,10 +11,9 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, Save, CheckCircle, PackageCheck } from 'lucide-react';
 import { toast } from 'sonner';
-
-const UNKNOWN_LOCATION_UUID = "00000000-0000-0000-0000-000000000000";
 
 // --- Zod Schema ---
 const poLineSchema = z.object({
@@ -87,13 +86,22 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
         setIsSubmitting(true);
         try {
             await handleSubmit(async (data) => {
-                await db.transaction('rw', db.purchase_orders, db.purchase_order_lines, db.sales_queue, async () => {
+                await db.transaction('rw', db.purchase_orders, db.purchase_order_lines, db.sales_queue, db.locations, async () => {
+                    // Fetch active location
+                    const locations = await db.locations.toArray();
+                    const activeLocationId = locations[0]?.id;
+
+                    if (!activeLocationId) {
+                        toast.error("No active location found. Please configure a location first.");
+                        throw new Error("No active location found");
+                    }
+
                     const id = poId || crypto.randomUUID();
 
                     // Upsert PO
                     await db.purchase_orders.put({
                         id,
-                        location_id: UNKNOWN_LOCATION_UUID, // Should get from context
+                        location_id: activeLocationId,
                         supplier_id: data.supplier_id,
                         expected_date: data.expected_date ? new Date(data.expected_date).toISOString() : null,
                         reference_number: data.reference_number || null,
@@ -127,7 +135,7 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                             id: crypto.randomUUID(),
                             entity: 'purchase_order_lines',
                             action: 'insert',
-                            location_id: UNKNOWN_LOCATION_UUID,
+                            location_id: activeLocationId,
                             payload: linePayload,
                             status: 'pending',
                             created_at: new Date().toISOString(),
@@ -141,10 +149,10 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                         id: crypto.randomUUID(),
                         entity: 'purchase_orders',
                         action: poId ? 'update' : 'insert',
-                        location_id: UNKNOWN_LOCATION_UUID,
+                        location_id: activeLocationId,
                         payload: {
                             id,
-                            location_id: UNKNOWN_LOCATION_UUID,
+                            location_id: activeLocationId,
                             supplier_id: data.supplier_id,
                             status: targetStatus,
                             expected_date: data.expected_date ? new Date(data.expected_date).toISOString() : null,
@@ -163,7 +171,10 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
             })();
         } catch (e) {
             console.error(e);
-            toast.error("Failed to save PO");
+            // Error toast handled above for specific cases, or generic here if needed
+            if ((e as Error).message !== "No active location found") {
+                toast.error("Failed to save PO");
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -274,7 +285,7 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                 )}
             </div>
 
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-end gap-4 items-center">
                 {status === 'draft' && (
                     <>
                         <Button variant="outline" onClick={() => handleSave('draft')} disabled={isSubmitting}>
@@ -289,6 +300,11 @@ export default function PurchaseOrderForm({ poId }: { poId?: string }) {
                     <Button onClick={handleReceive} className="bg-green-600 hover:bg-green-700">
                         <PackageCheck className="w-4 h-4 mr-2" /> Receive Stock
                     </Button>
+                )}
+                {(status === 'received' || status === 'closed') && (
+                    <Badge variant="secondary" className="text-base px-3 py-1">
+                        Stock Received
+                    </Badge>
                 )}
             </div>
         </div>
