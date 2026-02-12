@@ -52,6 +52,9 @@ export class FluxPOSDB extends Dexie {
     sales_returns!: Table<any, UUID>;
     sales_return_lines!: Table<any, UUID>;
 
+    // Sprint 5 Stores (Reporting)
+    stock_moves!: Table<any, UUID>;
+
     // We typically don't cache full sales history offline in Phase 0, 
     // just the queue for *new* offline sales.
     sales_queue!: Table<OutboxItem, UUID>;
@@ -99,6 +102,16 @@ export class FluxPOSDB extends Dexie {
             payments: 'id, invoice_id',
             sales_returns: 'id, location_id, original_invoice_id',
             sales_return_lines: 'id, return_id, item_id'
+        });
+
+        // Version 6: Reporting & Offline Fallback
+        this.version(6).stores({
+            // New Table
+            stock_moves: 'id, location_id, item_id, created_at, [location_id+created_at]',
+
+            // Updated Tables (adding indexes)
+            stock_lots: 'id, location_id, item_id, batch_number, expiry_date, [location_id+expiry_date]',
+            sales_invoices: 'id, location_id, customer_id, invoice_number, status, created_at, [location_id+created_at]'
         });
 
     }

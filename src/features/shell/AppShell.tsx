@@ -4,6 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "@/features/auth/LogoutButton";
 import { useSyncQueue } from "@/features/sync/useSyncQueue";
+import { HelpModal } from "@/components/ui/HelpModal"; // Import HelpModal
+import { useState } from "react";
+import { CircleHelp } from "lucide-react"; // Import Icon
+import { Button } from "@/components/ui/button"; // Import Button if not already there? Wait, AppShell might not use Button. Let's check imports.
+// It seems AppShell does not import Button. I should check if I need to import it.
+// Actually AppShell usually just has HTML.
+// But I used Button in my previous tool call. So I must import it.
 
 type Props = {
     userEmail: string;
@@ -23,6 +30,7 @@ const nav = [
     { label: "Stock Transfers", href: "/app/inventory/transfers" },
     { label: "POS", href: "/app/pos" },
     { label: "Sync", href: "/app/sync" },
+    { label: "Reports", href: "/app/reports/stock-ledger" }, // Defaulting to Stock Ledger for now
 ];
 
 function NavLink({ href, label }: { href: string; label: string }) {
@@ -44,6 +52,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
 
 export default function AppShell({ userEmail, children }: Props) {
     useSyncQueue(); // Background worker
+    const [showHelp, setShowHelp] = useState(false);
     return (
         <div className="min-h-screen flex">
             {/* Sidebar */}
@@ -65,12 +74,19 @@ export default function AppShell({ userEmail, children }: Props) {
                         <div className="text-sm font-medium">{userEmail || "Unknown"}</div>
                     </div>
 
-                    <LogoutButton />
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => setShowHelp(true)} title="Help & Training">
+                            <CircleHelp className="h-5 w-5 text-gray-500" />
+                        </Button>
+                        <LogoutButton />
+                    </div>
                 </header>
+
+                <HelpModal open={showHelp} onOpenChange={setShowHelp} />
 
                 {/* Page content */}
                 <main className="p-6">{children}</main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
